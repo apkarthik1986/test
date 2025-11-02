@@ -220,44 +220,55 @@
   )
 )
 
-(defun c:REPLTAG (/ filePath pairs acadObj doc ms txtObjs total replacements)
-  (princ "\nReplace Tags: Supports Excel (.xlsx/.xls) and CSV files.")
+
+;; Simple dialog version: prompts for file, tag, and replacement
+(defun c:REPLTAG (/ filePath tag repl pairs acadObj doc ms txtObjs total replacements)
+  (princ "\nReplace Tags: Simple Dialog Version (CSV/Excel)")
   (setq filePath (getfiled "Select Excel or CSV file with tag,replacement" "" "xlsx;xls;csv" 0))
   (if (not filePath)
     (progn (princ "\nNo file selected. Aborting.") (princ))
     (progn
-      (setq pairs (read-pairs-from-file filePath))
-      (if (not pairs)
-        (princ "\nNo pairs found in file or file could not be read. Aborting.")
+      (setq tag (getstring T "\nEnter the tag to search for: "))
+      (if (or (not tag) (equal (trim tag) ""))
+        (progn (princ "\nNo tag entered. Aborting.") (princ))
         (progn
-          (princ (strcat "\nLoaded " (itoa (length pairs)) " tag/replacement pairs."))
-          (setq acadObj (vlax-get-acad-object)
-                doc     (vla-get-ActiveDocument acadObj)
-                ms      (vla-get-ModelSpace doc))
-          (setq txtObjs (collect-text-objects ms))
-          (princ (strcat "\nFound " (itoa (length txtObjs)) " text objects in ModelSpace."))
-          (setq total 0 replacements 0)
-          (foreach pr pairs
-            (setq tag (nth 0 pr) repl (nth 1 pr))
-            (foreach entInfo txtObjs
-              (setq entObj (nth 0 entInfo) entTxt (nth 1 entInfo) entPt (nth 2 entInfo))
-              (if (and entTxt (equal entTxt tag))
+          (setq repl (getstring T "\nEnter the replacement text: "))
+          (if (not repl)
+            (progn (princ "\nNo replacement entered. Aborting.") (princ))
+            (progn
+              (setq pairs (read-pairs-from-file filePath))
+              (if (not pairs)
+                (princ "\nNo pairs found in file or file could not be read. Aborting.")
                 (progn
-                  (setq total (1+ total))
-                  (setq neighbor (find-right-neighbor entPt txtObjs))
-                  (if neighbor
-                    (progn
-                      (replace-text (nth 0 neighbor) repl)
-                      (setq replacements (1+ replacements))
-                      (princ (strcat "\nReplaced text for tag: " tag " -> " repl))
+                  (princ (strcat "\nLoaded " (itoa (length pairs)) " tag/replacement pairs."))
+                  (setq acadObj (vlax-get-acad-object)
+                        doc     (vla-get-ActiveDocument acadObj)
+                        ms      (vla-get-ModelSpace doc))
+                  (setq txtObjs (collect-text-objects ms))
+                  (princ (strcat "\nFound " (itoa (length txtObjs)) " text objects in ModelSpace."))
+                  (setq total 0 replacements 0)
+                  (foreach entInfo txtObjs
+                    (setq entObj (nth 0 entInfo) entTxt (nth 1 entInfo) entPt (nth 2 entInfo))
+                    (if (and entTxt (equal entTxt tag))
+                      (progn
+                        (setq total (1+ total))
+                        (setq neighbor (find-right-neighbor entPt txtObjs))
+                        (if neighbor
+                          (progn
+                            (replace-text (nth 0 neighbor) repl)
+                            (setq replacements (1+ replacements))
+                            (princ (strcat "\nReplaced text for tag: " tag " -> " repl))
+                          )
+                          (princ (strcat "\nNo right neighbor found for tag: " tag))
+                        )
+                      )
                     )
-                    (princ (strcat "\nNo right neighbor found for tag: " tag))
                   )
+                  (princ (strcat "\nSUMMARY: Processed " (itoa total) " tag occurrences; replaced " (itoa replacements) " texts."))
                 )
               )
             )
           )
-          (princ (strcat "\nSUMMARY: Processed " (itoa total) " tag occurrences; replaced " (itoa replacements) " texts."))
         )
       )
     )
