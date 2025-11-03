@@ -37,6 +37,12 @@
 (vl-load-com)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(setq *SECONDS-PER-DAY* 86400.0)  ; Number of seconds in a Julian day
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utility Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -46,14 +52,20 @@
 ;; Returns: String in format "YYYY-MM-DD HH:MM:SS"
 (defun get-current-datetime (/ dt year month day hour min sec)
   (setq dt (rtos (getvar "CDATE") 2 6))  ; Format as string with 6 decimal places
-  ; Parse CDATE string: positions are 1-based in AutoLISP substr
-  (setq year (substr dt 1 4)       ; Characters 1-4: YYYY
-        month (substr dt 5 2)      ; Characters 5-6: MM
-        day (substr dt 7 2)        ; Character 7-8: DD
-        hour (substr dt 10 2)      ; Characters 10-11: HH (after decimal point at position 9)
-        min (substr dt 12 2)       ; Characters 12-13: MM
-        sec (substr dt 14 2))      ; Characters 14-15: SS
-  (strcat year "-" month "-" day " " hour ":" min ":" sec)
+  ; Validate string length (should be at least 15 characters: YYYYMMDD.HHMMSS)
+  (if (< (strlen dt) 15)
+    "Unknown"  ; Return fallback if format is unexpected
+    (progn
+      ; Parse CDATE string: positions are 1-based in AutoLISP substr
+      (setq year (substr dt 1 4)       ; Characters 1-4: YYYY
+            month (substr dt 5 2)      ; Characters 5-6: MM
+            day (substr dt 7 2)        ; Character 7-8: DD
+            hour (substr dt 10 2)      ; Characters 10-11: HH (after decimal point at position 9)
+            min (substr dt 12 2)       ; Characters 12-13: MM
+            sec (substr dt 14 2))      ; Characters 14-15: SS
+      (strcat year "-" month "-" day " " hour ":" min ":" sec)
+    )
+  )
 )
 
 ;; Get current user login name
@@ -69,7 +81,7 @@
 ;; Validate file path exists
 ;; Args: filepath - string path to file
 ;; Returns: T if file exists, nil otherwise
-(defun validate-file-path (filepath / fh result)
+(defun validate-file-path (filepath / fh)
   (if (and filepath (setq fh (open filepath "r")))
     (progn
       (close fh)
@@ -88,9 +100,8 @@
 ;; Calculate elapsed time between two timestamps
 ;; Args: start-time, end-time - julian dates from get-current-time
 ;; Returns: String formatted as "X.XX seconds"
-(defun format-elapsed-time (start-time end-time / elapsed seconds-per-day)
-  (setq seconds-per-day 86400.0)  ; Number of seconds in a day
-  (setq elapsed (* (- end-time start-time) seconds-per-day))
+(defun format-elapsed-time (start-time end-time / elapsed)
+  (setq elapsed (* (- end-time start-time) *SECONDS-PER-DAY*))
   (strcat (rtos elapsed 2 2) " seconds")
 )
 
@@ -391,7 +402,7 @@
 )
 
 ;; Main command: prompts for file and processes all tag/replacement pairs
-(defun c:REPLTAG (/ filePath pairs acadObj doc ms txtObjs grandTotal grandRepl pair tag repl result pairTotal pairRepl start-time end-time user-login current-datetime)
+(defun c:REPLTAG (/ filePath pairs acadObj doc ms txtObjs grandTotal grandRepl pair tag repl result pairTotal pairRepl start-time end-time user-login current-datetime end-datetime)
   
   ; Display header with date/time and user info
   (setq current-datetime (get-current-datetime))
@@ -458,6 +469,7 @@
 
           ; Record end time and calculate elapsed time
           (setq end-time (get-current-time))
+          (setq end-datetime (get-current-datetime))
           
           ; Print summary
           (princ "\n")
@@ -469,7 +481,7 @@
           (princ (strcat "\nSuccessfully replaced " (itoa grandRepl) " text objects"))
           (princ "\n")
           (princ (strcat "\nStart Time: " current-datetime))
-          (princ (strcat "\nEnd Time: " (get-current-datetime)))
+          (princ (strcat "\nEnd Time: " end-datetime))
           (princ (strcat "\nTotal Processing Time: " (format-elapsed-time start-time end-time)))
           (princ "\n========================================")
 
