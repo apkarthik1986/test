@@ -1,11 +1,19 @@
 # Replace Tags AutoLISP Tool
 
 This workspace contains an AutoLISP utility to find tag text in an AutoCAD drawing
-and replace the text immediately to the right of each tag with a replacement value
-from a spreadsheet.
+and replace the text immediately to the right of each tag with replacement values
+from a spreadsheet or CSV file.
+
+**Latest Update:** The tool has been completely rewritten with modern AutoLISP practices:
+- Now correctly processes ALL tag/replacement pairs from the input file (previously only worked with manually entered tags)
+- Enhanced error handling with clear, actionable error messages
+- Better user feedback with progress indicators and detailed summaries
+- Improved code structure with modular functions
+- More robust file reading with comprehensive validation
 
 Files
 - `replace-tags.lsp` — AutoLISP script. Load in AutoCAD and run the `REPLTAG` command.
+- `sample-tags.csv` — Example CSV file showing the expected format.
 
 Purpose
 - Read pairs (tag, replacement) from Excel (.xlsx/.xls) or CSV files and for each matching
@@ -26,8 +34,13 @@ Input file formats
 - Save as .xlsx or .xls format
 
 **CSV format (fallback):**
+```
 TAG001,Replacement A
 TAG002,Replacement B
+TAG003,Replacement C
+```
+
+See `sample-tags.csv` for a complete example.
 
 Notes:
 - Empty rows are ignored in both formats.
@@ -36,11 +49,13 @@ Notes:
 
 How to use
 1. Open your drawing in AutoCAD.
-2. In the command line type `APLOAD` and load `replace-tags.lsp` (or drag it into the drawing).
+2. In the command line type `APPLOAD` and load `replace-tags.lsp` (or drag it into the drawing).
 3. Run the command `REPLTAG`.
-4. When prompted, choose your Excel (.xlsx/.xls) or CSV file.
-5. The script will auto-detect the file format and process accordingly.
-6. Monitor the command line for progress and summary reports.
+4. When prompted, select your Excel (.xlsx/.xls) or CSV file containing tag/replacement pairs.
+5. The script will automatically process ALL tag/replacement pairs from the file.
+6. Monitor the command line for detailed progress and summary reports.
+
+**Important:** The script processes ALL pairs from your input file automatically. You don't need to enter individual tags - just prepare your file with all the tag/replacement pairs you need.
 
 Behavior and assumptions
 - The script searches only ModelSpace entities that expose a `TextString` property
@@ -77,6 +92,26 @@ Next steps / Improvements
 - Add support for searching in PaperSpace/layouts or within nested block references.
 - Add worksheet selection for Excel files with multiple sheets.
 - Add progress indicator for large files with many rows.
+
+## What's New in This Version
+
+**Major Bug Fix:** The original implementation had a critical logic error where it would:
+1. Load all tag/replacement pairs from the Excel/CSV file
+2. Prompt the user to manually enter a single tag and replacement
+3. Only process that single manually-entered pair, completely ignoring the file contents
+
+**This has been fixed!** The tool now:
+- Processes ALL tag/replacement pairs from your input file automatically
+- No longer prompts for manual tag/replacement entry
+- Provides detailed progress output for each pair being processed
+- Shows comprehensive summary statistics at the end
+
+**Improved Features:**
+- Better error messages with specific troubleshooting guidance
+- Progress indicators showing which tags are being processed
+- Detailed summary showing total pairs processed, tags found, and replacements made
+- Warnings for tags not found in the drawing or tags with no right neighbor
+- Enhanced CSV parsing with line-by-line validation and warnings
 
 Troubleshooting Excel COM issues
 - If you get "Excel COM not available" errors, ensure:
