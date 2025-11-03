@@ -69,23 +69,17 @@
 ;; Validate file path exists
 ;; Args: filepath - string path to file
 ;; Returns: T if file exists, nil otherwise
-(defun validate-file-path (filepath / fh)
-  (if (not filepath)
-    nil
+(defun validate-file-path (filepath / fh result)
+  (if (and filepath (setq fh (open filepath "r")))
     (progn
-      (setq fh (open filepath "r"))
-      (if fh
-        (progn
-          (close fh)
-          T
-        )
-        nil
-      )
+      (close fh)
+      T
     )
+    nil
   )
 )
 
-;; Get current time in seconds (for elapsed time calculation)
+;; Get current time as Julian date (for elapsed time calculation)
 ;; Returns: Julian date as real number
 (defun get-current-time ()
   (getvar "CDATE")
