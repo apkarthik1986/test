@@ -25,7 +25,7 @@
 ;;   - Excel COM requires full AutoCAD and appropriate system permissions
 ;;   - Processes ALL tag/replacement pairs from the file automatically
 ;;   - Provides detailed progress output and comprehensive summary statistics
-;;   - Date/time stamping with UTC timestamps
+;;   - Date/time stamping with system timestamps
 ;;   - User login tracking
 ;;   - Processing time metrics
 ;;   - Enhanced error handling with actionable error messages
@@ -40,9 +40,10 @@
 ;; Utility Functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Get current UTC date/time as formatted string
-;; Returns: String in format "YYYY-MM-DD HH:MM:SS UTC"
-(defun get-utc-datetime (/ dt year month day hour min sec)
+;; Get current date/time as formatted string
+;; Note: Uses AutoCAD's CDATE which is based on system local time
+;; Returns: String in format "YYYY-MM-DD HH:MM:SS"
+(defun get-current-datetime (/ dt year month day hour min sec)
   (setq dt (rtos (getvar "CDATE") 2 6))
   (setq year (substr dt 1 4)
         month (substr dt 5 2)
@@ -50,7 +51,7 @@
         hour (substr dt 10 2)
         min (substr dt 12 2)
         sec (substr dt 14 2))
-  (strcat year "-" month "-" day " " hour ":" min ":" sec " UTC")
+  (strcat year "-" month "-" day " " hour ":" min ":" sec)
 )
 
 ;; Get current user login name
@@ -88,11 +89,14 @@
   (getvar "CDATE")
 )
 
+;; Constants
+(setq *SECONDS-PER-DAY* 86400.0)
+
 ;; Calculate elapsed time between two timestamps
 ;; Args: start-time, end-time - julian dates from get-current-time
 ;; Returns: String formatted as "X.XX seconds"
 (defun format-elapsed-time (start-time end-time / elapsed)
-  (setq elapsed (* (- end-time start-time) 86400.0)) ; Convert days to seconds
+  (setq elapsed (* (- end-time start-time) *SECONDS-PER-DAY*))
   (strcat (rtos elapsed 2 2) " seconds")
 )
 
@@ -396,7 +400,7 @@
 (defun c:REPLTAG (/ filePath pairs acadObj doc ms txtObjs grandTotal grandRepl pair tag repl result pairTotal pairRepl start-time end-time user-login current-datetime)
   
   ; Display header with date/time and user info
-  (setq current-datetime (get-utc-datetime))
+  (setq current-datetime (get-current-datetime))
   (setq user-login (get-user-login))
   (princ "\n========================================")
   (princ "\n=== Replace Tags Tool ===")
@@ -409,7 +413,7 @@
   
   ; Record start time
   (setq start-time (get-current-time))
-  (princ (strcat "\nProcessing started at: " current-datetime))
+  (princ "\n")
 
   (setq filePath (getfiled "Select Excel or CSV file with tag,replacement pairs" "" "xlsx;xls;csv" 0))
 
@@ -471,7 +475,7 @@
           (princ (strcat "\nSuccessfully replaced " (itoa grandRepl) " text objects"))
           (princ "\n")
           (princ (strcat "\nStart Time: " current-datetime))
-          (princ (strcat "\nEnd Time: " (get-utc-datetime)))
+          (princ (strcat "\nEnd Time: " (get-current-datetime)))
           (princ (strcat "\nTotal Processing Time: " (format-elapsed-time start-time end-time)))
           (princ "\n========================================")
 
