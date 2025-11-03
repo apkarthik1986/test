@@ -270,7 +270,7 @@
   (foreach entInfo txtObjs
     (setq entTxt (nth 1 entInfo)
           entPt (nth 2 entInfo))
-    (if (and entTxt (equal entTxt tag))
+    (if (and entTxt (equal (trim entTxt) tag))
       (progn
         (setq total (1+ total))
         (setq neighbor (find-right-neighbor entPt txtObjs))
