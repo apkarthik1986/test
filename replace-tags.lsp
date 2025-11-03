@@ -42,15 +42,17 @@
 
 ;; Get current date/time as formatted string
 ;; Note: Uses AutoCAD's CDATE which is based on system local time
+;; CDATE format: YYYYMMDD.HHMMSSSS (Julian date)
 ;; Returns: String in format "YYYY-MM-DD HH:MM:SS"
 (defun get-current-datetime (/ dt year month day hour min sec)
-  (setq dt (rtos (getvar "CDATE") 2 6))
-  (setq year (substr dt 1 4)
-        month (substr dt 5 2)
-        day (substr dt 7 2)
-        hour (substr dt 10 2)
-        min (substr dt 12 2)
-        sec (substr dt 14 2))
+  (setq dt (rtos (getvar "CDATE") 2 6))  ; Format as string with 6 decimal places
+  ; Parse CDATE string: positions are 1-based in AutoLISP substr
+  (setq year (substr dt 1 4)       ; Characters 1-4: YYYY
+        month (substr dt 5 2)      ; Characters 5-6: MM
+        day (substr dt 7 2)        ; Character 7-8: DD
+        hour (substr dt 10 2)      ; Characters 10-11: HH (after decimal point at position 9)
+        min (substr dt 12 2)       ; Characters 12-13: MM
+        sec (substr dt 14 2))      ; Characters 14-15: SS
   (strcat year "-" month "-" day " " hour ":" min ":" sec)
 )
 
@@ -89,14 +91,12 @@
   (getvar "CDATE")
 )
 
-;; Constants
-(setq *SECONDS-PER-DAY* 86400.0)
-
 ;; Calculate elapsed time between two timestamps
 ;; Args: start-time, end-time - julian dates from get-current-time
 ;; Returns: String formatted as "X.XX seconds"
-(defun format-elapsed-time (start-time end-time / elapsed)
-  (setq elapsed (* (- end-time start-time) *SECONDS-PER-DAY*))
+(defun format-elapsed-time (start-time end-time / elapsed seconds-per-day)
+  (setq seconds-per-day 86400.0)  ; Number of seconds in a day
+  (setq elapsed (* (- end-time start-time) seconds-per-day))
   (strcat (rtos elapsed 2 2) " seconds")
 )
 
