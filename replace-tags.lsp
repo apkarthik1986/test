@@ -5,7 +5,7 @@
 ; Behavior: for each tag occurrence, finds the nearest text/mtext/attribute to the right
 ; and replaces its content with the replacement value.
 ; 
-; Notes: 
+; Notes:
 ; - Supports both Excel files (via COM) and CSV files (for portability).
 ; - Excel COM requires full AutoCAD and appropriate system permissions.
 ; - Processes ALL tag/replacement pairs from the file automatically.
@@ -52,7 +52,7 @@
 (defun read-csv-pairs (file / fh line parts tag repl pairs line-num)
   (setq pairs '() line-num 0)
   (princ (strcat "\nReading CSV file: " file))
-  
+
   (if (not (setq fh (open file "r")))
     (princ (strcat "\n*** ERROR: Could not open CSV file: " file))
     (progn
@@ -85,7 +85,7 @@
 
 (defun read-excel-pairs (file / xl wb ws pairs row-count col-count row tag repl error-occurred err-obj)
   (setq pairs '() error-occurred nil)
-  
+
   ; Try to create Excel COM object with better error handling
   (setq err-obj (vl-catch-all-apply 'vlax-get-or-create-object '("Excel.Application")))
   (if (vl-catch-all-error-p err-obj)
@@ -102,9 +102,9 @@
       (setq xl err-obj)
       (princ "\n✓ Excel COM object created successfully")
       (princ (strcat "\nOpening workbook: " file))
-      
+
       ; Try to open the workbook
-      (setq err-obj (vl-catch-all-apply 'vla-open 
+      (setq err-obj (vl-catch-all-apply 'vla-open
                      (list (vlax-get-property xl 'Workbooks) file)))
       (if (vl-catch-all-error-p err-obj)
         (progn
@@ -119,12 +119,12 @@
         (progn
           (setq wb err-obj)
           (princ "\n✓ Workbook opened successfully")
-          
+
           ; Get the active worksheet
           (setq ws (vlax-get-property wb 'ActiveSheet))
           (setq row-count (vlax-get-property (vlax-get-property ws 'UsedRange) 'Rows 'Count))
           (setq col-count (vlax-get-property (vlax-get-property ws 'UsedRange) 'Columns 'Count))
-          
+
           (if (< col-count 2)
             (progn
               (princ "\n*** ERROR: Worksheet must have at least 2 columns (tag, replacement)")
@@ -136,11 +136,11 @@
               (setq row 1)
               (while (<= row row-count)
                 ; Read cell values with error handling
-                (setq tag (vlax-variant-value 
+                (setq tag (vlax-variant-value
                             (vlax-get-property ws 'Cells row 1 'Value)))
-                (setq repl (vlax-variant-value 
+                (setq repl (vlax-variant-value
                              (vlax-get-property ws 'Cells row 2 'Value)))
-                
+
                 ; Convert variants to strings and handle nil/empty values
                 (if (not tag) (setq tag ""))
                 (if (not repl) (setq repl ""))
@@ -148,7 +148,7 @@
                 (setq repl (vl-princ-to-string repl))
                 (setq tag (trim tag))
                 (setq repl (trim repl))
-                
+
                 (if (and (not (equal tag "")) (not (equal repl "")))
                   (setq pairs (cons (list tag repl) pairs))
                 )
@@ -157,7 +157,7 @@
               (princ (strcat "\n✓ Successfully loaded " (itoa (length pairs)) " valid pairs"))
             )
           )
-          
+
           ; Clean up Excel COM objects properly
           (princ "\nClosing Excel...")
           (vlax-invoke wb 'Close :vlax-false)
@@ -170,7 +170,7 @@
       )
     )
   )
-  
+
   (if error-occurred
     '()
     (reverse pairs)
@@ -237,38 +237,32 @@
   (reverse list)
 )
 
-(defun find-right-neighbor (tag-pt text-list / tx ty cand best dx dy)
-  (setq tx (car tag-pt) ty (cadr tag-pt) best nil)
+(defun find-right-neighbor (tag-pt text-list / tx ty cand best dx dy best-item)
+  (setq tx (car tag-pt) ty (cadr tag-pt) best nil best-item nil)
   (foreach item text-list
     (setq cand (nth 2 item)) ; point
-    (if (and cand
-             (> (car cand) tx) ; to the right
-             (<= (abs (- (cadr cand) ty)) 1.0) ; vertical tolerance (units)
-        )
-      (progn
-        (setq dx (- (car cand) tx))
-        (if (or (null best) (< dx (car best)))
-          (setq best (list dx item))
-        )
+    (setq dx (- (car cand) tx))
+    (setq dy (- (cadr cand) ty))
+    (if (and (> dx 0) (<= (abs dy) 1.0))
+      (if (or (not best) (< dx (- (car best) tx)))
+        (setq best cand best-item item)
       )
     )
   )
-  (if best (cadr best) nil)
+  best-item
 )
 
-(defun replace-text (target-obj newstr / )
-  (if (and target-obj (vlax-property-available-p target-obj 'TextString))
-    (vla-put-TextString target-obj newstr)
+(defun replace-text (obj new /)
+  (if (and obj (vlax-property-available-p obj 'TextString))
+    (vla-put-TextString obj new)
+    nil
   )
 )
 
-
-;; Process a single tag/replacement pair through all text objects
-(defun process-single-pair (tag repl txtObjs / total replacements entInfo entObj entTxt entPt neighbor)
+(defun process-pair (tag repl txtObjs / total replacements entInfo entTxt entPt neighbor)
   (setq total 0 replacements 0)
   (foreach entInfo txtObjs
-    (setq entObj (nth 0 entInfo) 
-          entTxt (nth 1 entInfo) 
+    (setq entTxt (nth 1 entInfo)
           entPt (nth 2 entInfo))
     (if (and entTxt (equal entTxt tag))
       (progn
@@ -293,18 +287,18 @@
   (princ "\n=== Replace Tags Tool ===")
   (princ "\nThis tool reads tag/replacement pairs from Excel or CSV files")
   (princ "\nand replaces text to the right of each tag in the drawing.")
-  
+
   (setq filePath (getfiled "Select Excel or CSV file with tag,replacement pairs" "" "xlsx;xls;csv" 0))
-  
+
   (if (not filePath)
-    (progn 
-      (princ "\nNo file selected. Operation cancelled.") 
+    (progn
+      (princ "\nNo file selected. Operation cancelled.")
       (princ)
     )
     (progn
       (princ (strcat "\nReading file: " filePath))
       (setq pairs (read-pairs-from-file filePath))
-      
+
       (if (not pairs)
         (progn
           (princ "\n*** ERROR: No valid tag/replacement pairs found in file.")
@@ -315,65 +309,47 @@
         )
         (progn
           (princ (strcat "\n✓ Loaded " (itoa (length pairs)) " tag/replacement pairs from file."))
-          
+
           ; Initialize AutoCAD objects
           (setq acadObj (vlax-get-acad-object)
                 doc     (vla-get-ActiveDocument acadObj)
-                ms      (vla-get-ModelSpace doc))
-          
-          ; Collect all text objects
-          (princ "\nScanning drawing for text objects...")
-          (setq txtObjs (collect-text-objects ms))
-          (princ (strcat "\n✓ Found " (itoa (length txtObjs)) " text objects in ModelSpace."))
-          
-          (if (= (length txtObjs) 0)
-            (progn
-              (princ "\n*** WARNING: No text objects found in ModelSpace.")
-              (princ "\nPlease ensure your drawing contains text entities.")
-              (princ)
-            )
-            (progn
-              (princ "\n\nProcessing replacements...")
-              (setq grandTotal 0 grandRepl 0)
-              
-              ; Process each tag/replacement pair from the file
-              (foreach pair pairs
-                (setq tag (nth 0 pair)
-                      repl (nth 1 pair))
-                (princ (strcat "\nProcessing tag: '" tag "'"))
-                
-                (setq result (process-single-pair tag repl txtObjs))
-                (setq pairTotal (nth 0 result)
-                      pairRepl (nth 1 result))
-                
-                (setq grandTotal (+ grandTotal pairTotal)
-                      grandRepl (+ grandRepl pairRepl))
-                
-                (if (= pairTotal 0)
-                  (princ (strcat "\n  Note: Tag '" tag "' not found in drawing"))
-                )
-              )
-              
-              ; Print summary
-              (princ "\n")
-              (princ "\n=== SUMMARY ===")
-              (princ (strcat "\nProcessed " (itoa (length pairs)) " tag/replacement pairs from file"))
-              (princ (strcat "\nFound " (itoa grandTotal) " tag occurrences in drawing"))
-              (princ (strcat "\nSuccessfully replaced " (itoa grandRepl) " text objects"))
-              
-              (if (< grandRepl grandTotal)
-                (progn
-                  (princ (strcat "\n*** WARNING: " 
-                                (itoa (- grandTotal grandRepl)) 
-                                " tags had no right neighbor for replacement"))
-                  (princ "\nConsider adjusting the vertical tolerance in find-right-neighbor if needed.")
-                )
-              )
-              
-              (princ "\n\n✓ Operation complete.")
-              (princ)
+                ms      (vla-get-ModelSpace doc)
+                txtObjs (collect-text-objects ms)
+                grandTotal 0
+                grandRepl 0)
+
+          (foreach pair pairs
+            (setq tag (nth 0 pair)
+                  repl (nth 1 pair)
+                  result (process-pair tag repl txtObjs)
+                  pairTotal (nth 0 result)
+                  pairRepl (nth 1 result))
+
+            (setq grandTotal (+ grandTotal pairTotal)
+                  grandRepl (+ grandRepl pairRepl))
+
+            (if (= pairTotal 0)
+              (princ (strcat "\n  Note: Tag '" tag "' not found in drawing"))
             )
           )
+
+          ; Print summary
+          (princ "\n")
+          (princ "\n=== SUMMARY ===")
+          (princ (strcat "\nProcessed " (itoa (length pairs)) " tag/replacement pairs from file"))
+          (princ (strcat "\nFound " (itoa grandTotal) " tag occurrences in drawing"))
+          (princ (strcat "\nSuccessfully replaced " (itoa grandRepl) " text objects"))
+
+          (if (< grandRepl grandTotal)
+            (progn
+              (princ (strcat "\n*** WARNING: "
+                            (itoa (- grandTotal grandRepl))
+                            " tags had no right neighbor for replacement"))
+              (princ "\nConsider adjusting the vertical tolerance in find-right-neighbor if needed.")
+            )
+          )
+          (princ "\n\n✓ Operation complete.")
+          (princ)
         )
       )
     )
