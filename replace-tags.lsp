@@ -44,7 +44,7 @@
       (while (and (>= end start) (member (substr s end 1) '(" " "\t" "\n" "\r")))
         (setq end (1- end))
       )
-      (if (> end (1- start)) (substr s start (- end start -1)) "")
+      (if (> end (1- start)) (substr s start (- end start -1)) ""
     )
   )
 )
@@ -83,7 +83,7 @@
   (reverse pairs)
 )
 
-(defun read-excel-pairs (file / xl wb ws pairs row-count col-count row tag repl error-occurred err-obj)
+(defun read-excel-pairs (file / xl wb ws usedrange rows cols pairs row-count col-count row cell-tag cell-repl tag repl error-occurred err-obj)
   (setq pairs '() error-occurred nil)
 
   ; Try to create Excel COM object with better error handling
@@ -122,8 +122,11 @@
 
           ; Get the active worksheet
           (setq ws (vlax-get-property wb 'ActiveSheet))
-          (setq row-count (vlax-get-property (vlax-get-property ws 'UsedRange) 'Rows 'Count))
-          (setq col-count (vlax-get-property (vlax-get-property ws 'UsedRange) 'Columns 'Count))
+          (setq usedrange (vlax-get-property ws 'UsedRange))
+          (setq rows (vlax-get-property usedrange 'Rows))
+          (setq cols (vlax-get-property usedrange 'Columns))
+          (setq row-count (vlax-get-property rows 'Count))
+          (setq col-count (vlax-get-property cols 'Count))
 
           (if (< col-count 2)
             (progn
@@ -136,10 +139,10 @@
               (setq row 1)
               (while (<= row row-count)
                 ; Read cell values with error handling
-                (setq tag (vlax-variant-value
-                            (vlax-get-property ws 'Cells row 1 'Value)))
-                (setq repl (vlax-variant-value
-                             (vlax-get-property ws 'Cells row 2 'Value)))
+                (setq cell-tag (vlax-get-property ws 'Cells row 1))
+                (setq cell-repl (vlax-get-property ws 'Cells row 2))
+                (setq tag (vlax-variant-value (vlax-get-property cell-tag 'Value)))
+                (setq repl (vlax-variant-value (vlax-get-property cell-repl 'Value)))
 
                 ; Convert variants to strings and handle nil/empty values
                 (if (not tag) (setq tag ""))
@@ -162,6 +165,9 @@
           (princ "\nClosing Excel...")
           (vlax-invoke wb 'Close :vlax-false)
           (vlax-invoke xl 'Quit)
+          (vlax-release-object cols)
+          (vlax-release-object rows)
+          (vlax-release-object usedrange)
           (vlax-release-object ws)
           (vlax-release-object wb)
           (vlax-release-object xl)
