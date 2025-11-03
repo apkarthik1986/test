@@ -104,8 +104,8 @@
       (princ (strcat "\nOpening workbook: " file))
 
       ; Try to open the workbook
-      (setq err-obj (vl-catch-all-apply 'vla-open
-                     (list (vlax-get-property xl 'Workbooks) file)))
+      (setq err-obj (vl-catch-all-apply 'vlax-invoke-method
+                     (list (vlax-get-property xl 'Workbooks) "Open" file)))
       (if (vl-catch-all-error-p err-obj)
         (progn
           (princ (strcat "\n*** ERROR: Could not open Excel file: " file))
@@ -355,6 +355,6 @@
     )
   )
   (princ)
-)
+) 
 
 ; EOF
